@@ -20,6 +20,7 @@ fn main() {
     // General test calcs.
     let loop_delta = std::time::Duration::from_millis(((1.0 / (FPS_TARGET as f32)) * 1000.0) as u64);
     let total_loops = FPS_TARGET * TOTAL_DURATION_SECONDS;
+    let duration_secs = std::time::Duration::from_secs(TOTAL_DURATION_SECONDS);
 
     println!("Total loops: {} at delta: {}", total_loops, loop_delta.as_millis());
 
@@ -52,13 +53,20 @@ fn main() {
         let min: u128 = deltas.iter().min().unwrap().as_millis();
         let max: u128 = deltas.iter().max().unwrap().as_millis();
         let avg: f32 = sum_deltas as f32 / total_loops as f32;
+        let total_error = if delta_time > duration_secs {
+            (delta_time.as_secs_f32() / duration_secs.as_secs_f32()).fract() * 100.0
+        } else {
+            (1.0 - (delta_time.as_secs_f32() / duration_secs.as_secs_f32())).fract() * 100.0
+        };
 
-        println!("Limiter: {} - total time: {}ms (s: {}) - avg: {}ms - min: {}ms - max: {}ms",
+        println!("Limiter: {} - total time: {}ms (s: {}) - avg: {}ms - min: {}ms - max: {}ms - total error: {}%",
             pair.0,
             delta_time.as_millis(),
             delta_time.as_secs_f64(),
             avg,
             min,
-            max);
+            max,
+            total_error
+        );
     }
 }
