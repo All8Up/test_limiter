@@ -38,15 +38,15 @@ impl LimiterImpl {
         use std::mem;
         use winapi::um::{mmsystem::*, timeapi::timeGetDevCaps};
 
-        let tc_size = mem::size_of::<TIMECAPS>() as u32;
-        let mut tc = TIMECAPS {
+        let mut time_caps = TIMECAPS {
             wPeriodMin: 0,
             wPeriodMax: 0,
         };
 
         unsafe {
-            if timeGetDevCaps(&mut tc as *mut TIMECAPS, tc_size) == TIMERR_NOERROR {
-                tc.wPeriodMin
+            let time_caps_size = mem::size_of::<TIMECAPS>() as u32;
+            if timeGetDevCaps(&mut time_caps as *mut TIMECAPS, time_caps_size) == TIMERR_NOERROR {
+                time_caps.wPeriodMin
             } else {
                 1
             }
@@ -61,6 +61,7 @@ impl LimiterImpl {
 
     fn shutdown(&mut self) {
         use winapi::um::timeapi::{timeEndPeriod};
+        println!("Ending time period.");
         unsafe { timeEndPeriod(self.min_period); }
     }
 }

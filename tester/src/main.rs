@@ -6,7 +6,10 @@ fn main() {
     const TOTAL_DURATION_SECONDS: u64 = 5;
 
     // TODO: Currently missing is a do nothing CPU eater to see what impact the limiter has on the overall
-    // system.  I.e. do some matrix multiplies in the background or something on each thread.
+    // system.  I.e. do some matrix multiplies in the background or something on each thread.  The general
+    // idea should be to do a bunch of matrix multiples on one thread per core and when they all complete,
+    // run the thread limiter and then repeat.
+    // NOTE: We want to keep the tests separate though as the current test is useful on it's own.
 
     let limiters: [(&str, fn () -> Box<dyn Limiter>); 3] = [
         ("Standard Sleep", limiter::standard_sleep::create),
@@ -29,6 +32,12 @@ fn main() {
         let mut deltas = Vec::<std::time::Duration>::with_capacity(total_loops as usize);
         let start = std::time::Instant::now();
         {
+            // TODO: Need Os level thread times (i.e. kernel/user) measurements to verify if the
+            // solution is going to cause power issues.  Aka: Win32 GetThreadTimes.  Call this
+            // once a second *after* the first second and only within the duration, otherwise it
+            // will be polluted.  Of course on a typical system, virus scanners, background tasks
+            // etc will pollute the time anyway but might as well be "reasonably" accurate.
+
             for _ in 0..total_loops {
                 let start = std::time::Instant::now();
                 limiter.wait(loop_delta);

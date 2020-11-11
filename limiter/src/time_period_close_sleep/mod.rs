@@ -9,7 +9,7 @@ impl Default for LimiterImpl {
     fn default() -> Self {
         let mut result = LimiterImpl {
             min_period: LimiterImpl::get_min_period(),
-            close_enough: std::time::Duration::from_micros(50)
+            close_enough: std::time::Duration::from_micros(500)
         };
         result.init();
         result
@@ -33,12 +33,14 @@ impl Limiter for LimiterImpl {
         // Current time.
         let mut now = std::time::Instant::now();
 
+        // Only bother if we are within tolerance.
         if time > self.close_enough
         {
             // So long as we have waited this amount of time, we are good.
             let close_enough = time - self.close_enough;
 
             // We'll go by halves till we get into range.
+            // NOTE: If close_enough to too small, this ends up just doing a busy wait.
             let mut current = time / 2;
 
             // Total we have waited so far.
@@ -73,15 +75,15 @@ impl LimiterImpl {
         use std::mem;
         use winapi::um::{mmsystem::*, timeapi::timeGetDevCaps};
 
-        let tc_size = mem::size_of::<TIMECAPS>() as u32;
-        let mut tc = TIMECAPS {
+        let mut time_caps = TIMECAPS {
             wPeriodMin: 0,
             wPeriodMax: 0,
         };
 
         unsafe {
-            if timeGetDevCaps(&mut tc as *mut TIMECAPS, tc_size) == TIMERR_NOERROR {
-                tc.wPeriodMin
+            let time_caps_size = mem::size_of::<TIMECAPS>() as u32;
+            if timeGetDevCaps(&mut time_caps as *mut TIMECAPS, time_caps_size) == TIMERR_NOERROR {
+                time_caps.wPeriodMin
             } else {
                 1
             }
@@ -96,6 +98,7 @@ impl LimiterImpl {
 
     fn shutdown(&mut self) {
         use winapi::um::timeapi::{timeEndPeriod};
+        println!("Ending time period.");
         unsafe { timeEndPeriod(self.min_period); }
     }
 }
