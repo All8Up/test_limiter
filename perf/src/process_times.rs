@@ -63,4 +63,10 @@ pub fn get() -> Option<ProcessTimes> {
     }    
 }
 
-// For other OS's, this is basically just the "times()" api in posix.
+#[cfg(not(windows))]
+pub fn get() -> Option<ProcessTimes> {
+    Some(ProcessTimes {
+        user: std::time::Duration::from_secs(0),
+        kernel: std::time::Duration::from_secs(0)
+    })
+}

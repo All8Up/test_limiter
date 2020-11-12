@@ -1,13 +1,16 @@
 use super::Limiter;
 
 pub struct LimiterImpl {
+    close_enough: std::time::Duration,
+
+    #[cfg(windows)]
     min_period: u32,
-    close_enough: std::time::Duration
 }
 
 impl Default for LimiterImpl {
     fn default() -> Self {
         let mut result = LimiterImpl {
+            #[cfg(windows)]
             min_period: LimiterImpl::get_min_period(),
             close_enough: std::time::Duration::from_micros(500)
         };
@@ -104,8 +107,12 @@ impl LimiterImpl {
 }
 
 #[cfg(not(windows))]
-mod os_specific {
+impl LimiterImpl {
+    fn init(&mut self) {
+    }
 
+    fn shutdown(&mut self) {
+    }
 }
 
 pub fn create() -> Box<dyn Limiter> {

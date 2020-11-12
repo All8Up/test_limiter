@@ -1,12 +1,14 @@
 use super::Limiter;
 
 pub struct LimiterImpl {
+    #[cfg(windows)]
     min_period: u32
 }
 
 impl Default for LimiterImpl {
     fn default() -> Self {
         let mut result = LimiterImpl {
+            #[cfg(windows)]
             min_period: LimiterImpl::get_min_period()
         };
         result.init();
@@ -67,8 +69,12 @@ impl LimiterImpl {
 }
 
 #[cfg(not(windows))]
-mod os_specific {
+impl LimiterImpl {
+    fn init(&mut self) {
+    }
 
+    fn shutdown(&mut self) {
+    }
 }
 
 pub fn create() -> Box<dyn Limiter> {
