@@ -70,3 +70,15 @@ pub fn get() -> Option<ProcessTimes> {
         kernel: std::time::Duration::from_secs(0)
     })
 }
+
+pub fn capture<T>(f: T) -> Option<ProcessTimes>
+    where T: FnOnce()
+{
+    if let Some(start) = get() {
+        f();
+        if let Some(end) = get() {
+            return Some(end - start);
+        }
+    }
+    None
+}

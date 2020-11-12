@@ -1,9 +1,11 @@
 use limiter::Limiter;
+mod duration_sample;
+use duration_sample::DurationSample;
 
 fn main() {
     // Current test is fairly simple, run a loop with the limiter and measure errors.
-    const FPS_TARGET: u64 = 100;
-    const TOTAL_DURATION_SECONDS: u64 = 5;
+    const FPS_TARGET: usize = 100;
+    const TOTAL_DURATION_SECONDS: usize = 5;
 
     // TODO: Currently missing is a do nothing CPU eater to see what impact the limiter has on the overall
     // system.  I.e. do some matrix multiplies in the background or something on each thread.  The general
@@ -20,56 +22,50 @@ fn main() {
     // General test calcs.
     let loop_delta = std::time::Duration::from_millis(((1.0 / (FPS_TARGET as f32)) * 1000.0) as u64);
     let total_loops = FPS_TARGET * TOTAL_DURATION_SECONDS;
-    let duration_secs = std::time::Duration::from_secs(TOTAL_DURATION_SECONDS);
 
     println!("Total loops: {} at delta: {}", total_loops, loop_delta.as_millis());
 
     // Loop through each limiter and get the information about it.
     for pair in &limiters {
-        // Create the limiter.
-        let limiter = (pair.1)();
-
-        // Record overall process times at the start.
-        let start_process = perf::process_times::get().unwrap();
-
-        // Record total time and per wait time.
-        let mut deltas = Vec::<std::time::Duration>::with_capacity(total_loops as usize);
-        let start = std::time::Instant::now();
-        {
-            // TODO: Need Os level thread times (i.e. kernel/user) measurements to verify if the
-            // solution is going to cause power issues.  Aka: Win32 GetThreadTimes.  Call this
-            // once a second *after* the first second and only within the duration, otherwise it
-            // will be polluted.  Of course on a typical system, virus scanners, background tasks
-            // etc will pollute the time anyway but might as well be "reasonably" accurate.
-
-            for _ in 0..total_loops {
-                let start = std::time::Instant::now();
-                limiter.wait(loop_delta);
-                let end = std::time::Instant::now();
-                deltas.push(end - start);
+        if let Some(results) = accuracy_test(pair.0, (pair.1)(), total_loops, loop_delta) {
+            for s in results {
+                println!("{}", s);
             }
-        }
-        let end = std::time::Instant::now();
-
-        // And the end of the process time information.
-        let end_process = perf::process_times::get().unwrap();
-        let process_delta = end_process - start_process;
-
-        let delta_time = end - start;
-        let sum_deltas: u128 = deltas.iter().map(|d| d.as_millis()).sum();
-        let min: u128 = deltas.iter().min().unwrap().as_millis();
-        let max: u128 = deltas.iter().max().unwrap().as_millis();
-        let avg: f32 = sum_deltas as f32 / total_loops as f32;
-        let total_error = if delta_time > duration_secs {
-            (delta_time.as_secs_f32() / duration_secs.as_secs_f32()).fract() * 100.0
         } else {
-            (1.0 - (delta_time.as_secs_f32() / duration_secs.as_secs_f32())).fract() * 100.0
+            println!("--- error timing limiter ---");
+        }
+    }
+}
+
+fn accuracy_test(name: &str, limiter: Box<dyn Limiter>, count: usize, delta: std::time::Duration) -> Option<Vec<String>> {
+    let mut call = DurationSample::default();
+    let mut total = DurationSample::default();
+    if let Some(process) = perf::process_times::capture(|| {
+        total.capture(|| {
+            for _ in 0..count {
+                call.capture(|| limiter.wait(delta) );
+            }
+        });
+    })
+    {
+        let duration_secs = delta * count as u32;
+        let min = call.min().as_millis();
+        let max = call.max().as_millis();
+        let avg = call.average().as_millis();
+        let total_error = if total.duration() > duration_secs {
+            (total.duration().as_secs_f32() / duration_secs.as_secs_f32()).fract() * 100.0
+        } else {
+            (1.0 - (total.duration().as_secs_f32() / duration_secs.as_secs_f32())).fract() * 100.0
         };
 
-        println!("Limiter: {}", pair.0);
-        println!(" total time: {}ms (s: {})", delta_time.as_millis(), delta_time.as_secs_f64());
-        println!(" avg: {}ms  min: {}ms  max: {}ms", avg, min, max);
-        println!(" total error: {}%", total_error);
-        println!(" user time: {}ms  kernel time: {}ms", process_delta.user.as_millis(), process_delta.kernel.as_millis());
+        Some(vec![
+            format!("Limiter: {}", name),
+            format!(" total time: {}ms (s: {})", total.duration().as_millis(), total.duration().as_secs_f64()),
+            format!(" avg: {}ms  min: {}ms  max: {}ms", avg, min, max),
+            format!(" total error: {}%", total_error),
+            format!(" user time: {}ms  kernel time: {}ms", process.user.as_millis(), process.kernel.as_millis())
+        ])
+    } else {
+        None
     }
 }
