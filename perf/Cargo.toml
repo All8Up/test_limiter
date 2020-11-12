@@ -1,0 +1,10 @@
+[package]
+name = "perf"
+version = "0.1.0"
+authors = ["Kelly Brock <all8up@gmail.com>"]
+edition = "2018"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["minwindef", "mmsystem", "minwindef", "processthreadsapi"] }
+
+[dependencies]

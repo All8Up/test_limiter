@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "tester",
-    "limiter"
+    "limiter",
+    "perf"
 ]

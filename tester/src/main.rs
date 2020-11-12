@@ -29,6 +29,9 @@ fn main() {
         // Create the limiter.
         let limiter = (pair.1)();
 
+        // Record overall process times at the start.
+        let start_process = perf::process_times::get().unwrap();
+
         // Record total time and per wait time.
         let mut deltas = Vec::<std::time::Duration>::with_capacity(total_loops as usize);
         let start = std::time::Instant::now();
@@ -48,6 +51,10 @@ fn main() {
         }
         let end = std::time::Instant::now();
 
+        // And the end of the process time information.
+        let end_process = perf::process_times::get().unwrap();
+        let process_delta = end_process - start_process;
+
         let delta_time = end - start;
         let sum_deltas: u128 = deltas.iter().map(|d| d.as_millis()).sum();
         let min: u128 = deltas.iter().min().unwrap().as_millis();
@@ -59,14 +66,10 @@ fn main() {
             (1.0 - (delta_time.as_secs_f32() / duration_secs.as_secs_f32())).fract() * 100.0
         };
 
-        println!("Limiter: {} - total time: {}ms (s: {}) - avg: {}ms - min: {}ms - max: {}ms - total error: {}%",
-            pair.0,
-            delta_time.as_millis(),
-            delta_time.as_secs_f64(),
-            avg,
-            min,
-            max,
-            total_error
-        );
+        println!("Limiter: {}", pair.0);
+        println!(" total time: {}ms (s: {})", delta_time.as_millis(), delta_time.as_secs_f64());
+        println!(" avg: {}ms  min: {}ms  max: {}ms", avg, min, max);
+        println!(" total error: {}%", total_error);
+        println!(" user time: {}ms  kernel time: {}ms", process_delta.user.as_millis(), process_delta.kernel.as_millis());
     }
 }
