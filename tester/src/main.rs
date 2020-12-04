@@ -14,10 +14,11 @@ fn main() {
     // run the thread limiter and then repeat.
     // NOTE: We want to keep the tests separate though as the current test is useful on it's own.
 
-    let limiters: [(&str, fn () -> Box<dyn Limiter>); 3] = [
+    let limiters: [(&str, fn () -> Box<dyn Limiter>); 4] = [
         ("Standard Sleep", limiter::standard_sleep::create),
         ("Time Period Standard Sleep", limiter::time_period_standard_sleep::create),
-        ("Time Period With Half Targets", limiter::time_period_close_sleep::create)
+        ("Time Period With Half Targets", limiter::time_period_close_sleep::create),
+        ("Time Period With Single Sleep", limiter::time_period_close_sleep_once::create),
     ];
 
     // General test calcs.
